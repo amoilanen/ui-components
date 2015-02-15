@@ -1,0 +1,325 @@
+<template id="select-template">
+  <style>
+    .rc-select {
+      width: 200px;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+       user-select: none;
+     }
+
+     .rc-select--focus-trap {
+       width: 0px;
+       height: 0px;
+       border: none;
+       position: fixed;
+       left: -100px;
+       top: -100px;
+     }
+
+     .rc-select--field {
+       display: inline-block;
+       position: relative;
+       height: 27px;
+       width: 100%;
+       background: #f5f5f5;
+       border: 1px solid rgba(0, 0, 0, 0.1);
+       border-radius: 4px;
+     }
+
+    .rc-select--field .rc-select--input {
+      height: 100%;
+      padding-right: 27px;
+      padding-left: 12px;
+      line-height: 27px;
+    }
+
+    .rc-select_focus .rc-select--field {
+      border-color: #4285f4;
+    }
+
+    .rc-select--arrow {
+      /* arrow */
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid #444444;
+
+      position: absolute;
+      right: 8px;
+      top: 50%;
+    }
+
+    .rc-select--options {
+      position: relative;
+      display: none;
+    }
+
+    .rc-select_active .rc-select--options {
+      display: block;
+    }
+
+    .rc-select--options ul {
+      list-style-type: none;
+      margin-top: 1px;
+      padding-left: 0;
+      background: #fdfdfd;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      -webkit-box-shadow: 1px 1px 3px 0px rgba(50, 50, 50, 0.45);
+      -moz-box-shadow: 1px 1px 3px 0px rgba(50, 50, 50, 0.45);
+      box-shadow: 1px 1px 3px 0px rgba(50, 50, 50, 0.45);
+    }
+
+    .rc-select--options .rc-select--option_active {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    .rc-select--option.rc-select--option_selected,
+    .rc-select--options .rc-select--option_active.rc-select--option_selected {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .rs-selection--option-label {
+      margin-left: 12px;
+      padding-bottom: 4px;
+      padding-top: 4px;
+    }
+  </style>
+  <div class="rc-select">
+    <input class="rc-select--focus-trap" type="text" readonly/>
+    <div class="rc-select--field">
+      <div class="rc-select--input">label2</div>
+      <div class="rc-select--arrow"></div>
+    </div>
+    <div class="rc-select--options">
+      <ul>
+      </ul>
+    </div>
+  </div>
+</template>
+<link rel="import" href="util.html">
+<script>
+  (function() {
+
+    //TODO: Allow to specify options as nested HTML elements
+    //TODO: Re-factoring: extract rendering operations, avoid re-factoring whole of the component
+    var template = document.currentScript.ownerDocument.querySelector('#select-template');
+    var prototype = Object.create(HTMLElement.prototype);
+
+    function empty(element) {
+      while (element.firstChild) {
+        element.removeChild(element.firstChild);
+      }
+    }
+
+    function closest(element, className) {
+      while (element) {
+        var elementClass = element.getAttribute ? element.getAttribute('class') : null;
+
+        if (elementClass && elementClass.indexOf(className) >= 0) {
+          return element;
+        }
+        element = element.parentNode;
+      }
+    }
+
+    function toggle(self, active) {
+      if (typeof active === 'undefined') {
+        active = !self.active;
+      }
+      self.active = active;
+      self.activeIndex = -1;
+      if (active) {
+        self.focusTrapElement.focus();
+      } else {
+        self.focusTrapElement.blur();
+      }
+      self.inFocus = active;
+      renderSelectContainerClass(self);
+    }
+
+    function activate(self, activeIndex) {
+      self.activeIndex = activeIndex;
+      render(self);
+    }
+
+    function onFocus(self, event) {
+      self.inFocus = true;
+      renderSelectContainerClass(self);
+    }
+
+    function onBlur(self, event) {
+      self.inFocus = false;
+      renderSelectContainerClass(self);
+    }
+
+    function onKeyUp(self, event) {
+      var activeIndex = self.activeIndex;
+
+      switch(event.keyCode) {
+
+        case Util.KEY_CODES.ESC:
+          toggle(self, false);
+          break;
+
+        case Util.KEY_CODES.ARROW_DOWN:
+          if (!self.active) {
+            toggle(self, true);
+          }
+          activeIndex++;
+          if (activeIndex >= self.options.length) {
+            activeIndex = 0;
+          }
+          self.activeIndex = activeIndex;
+          break;
+
+        case Util.KEY_CODES.ARROW_UP:
+          if (!self.active) {
+            toggle(self, true);
+          }
+          activeIndex--;
+          if (activeIndex < 0) {
+            activeIndex = self.options.length - 1;
+          }
+          self.activeIndex = activeIndex;
+          break;
+
+        case Util.KEY_CODES.ENTER:
+          var activeOption = self.options[self.activeIndex];
+
+          self.activeIndex = -1;
+          select(self, activeOption.value);
+          break;
+
+        default:
+          break;
+      }
+      render(self);
+    }
+
+    function onSelect(self, option) {
+      var event = new CustomEvent('change', {
+        'detail': option
+      });
+
+      self.dispatchEvent(event);
+    }
+
+    function select(self, value) {
+      self.options.forEach(function(option) {
+        option.selected = (option.value === value);
+
+        if (option.selected) {
+          self.selectedOption = option;
+          onSelect(self, option);
+        }
+      });
+      render(self);
+      toggle(self);
+
+      //Need to return focus to the focus trap, the focus was lost to an option
+      self.focusTrapElement.focus();
+    }
+
+    /*
+     * Rendering and re-rendering functions.
+     */
+    function renderSelectContainerClass(self) {
+      var className = 'rc-select';
+
+      if (self.active) {
+        className = className + ' rc-select_active';
+      }
+      if (self.inFocus) {
+        className = className + ' rc-select_focus';
+      }
+      self.selectContainer.setAttribute('class', className);
+    }
+
+    function render(self) {
+      empty(self.selectInput);
+      self.selectInput.appendChild(document.createTextNode(self.selectedOption.label));
+      empty(self.optionsContainer);
+      self.options.forEach(function(option, idx) {
+        var optionContainerElement = document.createElement('li');
+        var optionLabelElement = document.createElement('div');
+        var className = "rc-select--option";
+
+        if (option.selected) {
+          className = className + " rc-select--option_selected";
+        }
+        if (idx === self.activeIndex) {
+          className = className + " rc-select--option_active";
+        }
+
+        optionContainerElement.setAttribute('class', className);
+        optionContainerElement.setAttribute('value', option.value);
+        optionContainerElement.setAttribute('idx', idx);
+        optionLabelElement.setAttribute('class', 'rs-selection--option-label');
+        optionLabelElement.appendChild(document.createTextNode(option.label));
+        optionContainerElement.appendChild(optionLabelElement);
+        self.optionsContainer.appendChild(optionContainerElement);
+      });
+    }
+
+    prototype.createdCallback = function() {
+      var self = this;
+      var element = document.importNode(template.content, true);
+
+      this.active = false;
+      this.inFocus = false;
+      this.activeIndex = -1;
+
+      this.selectContainer = element.querySelector('.rc-select');
+      this.selectContainer.addEventListener('click', function(event) {
+        var closestOption = closest(event.target, 'rc-select--option');
+
+        if (closestOption) {
+          var index = parseInt(closestOption.getAttribute('idx'));
+
+          select(self, self.options[index].value);
+        } else {
+          toggle(self);
+        }
+      });
+      this.selectContainer.addEventListener('mouseover', function(event) {
+        var closestOption = closest(event.target, 'rc-select--option');
+
+        if (closestOption) {
+          var index = parseInt(closestOption.getAttribute('idx'));
+
+          if (self.activeIndex !== index) {
+            activate(self, index);
+          }
+        }
+      });
+      this.optionsContainer = element.querySelector('.rc-select--options ul');
+      this.selectInput = element.querySelector('.rc-select--input');
+      this.focusTrapElement = element.querySelector('.rc-select--focus-trap');
+      this.focusTrapElement.addEventListener('keyup', function(event) {
+        onKeyUp(self, event);
+      });
+      this.focusTrapElement.addEventListener('focus', function(event) {
+        onFocus(self, event);
+      });
+      this.focusTrapElement.addEventListener('blur', function(event) {
+        onBlur(self, event);
+      });
+      this.createShadowRoot().appendChild(element);
+    };
+    prototype.setOptions = function(options) {
+      var self = this;
+
+      this.options = options;
+      this.selectedOption = this.options.filter(function(option) {
+        return option.selected;
+      })[0];
+      render(this);
+    };
+    document.registerElement('rc-select', {
+      prototype: prototype
+    });
+  })();
+</script>

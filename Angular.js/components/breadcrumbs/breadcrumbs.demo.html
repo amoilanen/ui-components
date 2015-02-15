@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Breadcrumbs</title>
+  <style>
+    #breadcrumb-container {
+      margin-left: 16px;
+      margin-top: 16px;
+    }
+    #content {
+      margin: 32px;
+    }
+    #resetButton {
+      margin-left: 32px;
+    }
+  </style>
+  <link rel="stylesheet" href="breadcrumbs.css"></style>
+  <script src="../../bower_components/angular/angular.js"></script>
+  <script src="breadcrumbs.js"></script>
+  <script>
+    var app = angular.module('BreadcrumbsDemo', ['Components']);
+
+    app.constant('fullPath',
+      ['element1', 'element2', 'element3',
+       'element4', 'element5', 'element6', 'element7'])
+    .controller('Path', function Path($scope, fullPath) {
+      $scope.reset = function() {
+        $scope.path = fullPath;
+      };
+      $scope.onPathChange = function(path) {
+        $scope.path = path;
+      };
+      $scope.reset();
+    });
+  </script>
+</head>
+<body ng-app="BreadcrumbsDemo" ng-controller="Path">
+  <div id="breadcrumb-container">
+    <comp-breadcrumbs path="path" max-entries="5" on-change="onPathChange(path)"></comp-breadcrumbs>
+  </div>
+  <div id="content">{{path[path.length - 1 ]}}</div>
+  <button id="resetButton" ng-click="reset()">Reset</button>
+</body>
+</html>
