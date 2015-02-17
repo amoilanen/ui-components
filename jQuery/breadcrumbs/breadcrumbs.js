@@ -1,6 +1,8 @@
 (function ($) {
 
   $.fn.breadcrumbs = function(options) {
+    var self = this;
+
     options = $.extend({
       maxEntries: -1,
       path: []
@@ -9,24 +11,34 @@
     var maxEntries = options.maxEntries;
     var path = options.path;
 
-    function activateCrumb(self, crumb) {
-      var idx = parseInt(crumb.getAttribute('idx'));
-      var newPath = self.path.slice(0, idx + 1);
+    var $container = $('<div></div>').attr('class', 'breadcrumbs').appendTo(self);
+    $container.on('click', '.crumb', function(event) {
+      activateCrumb(self, $(event.target));
+    }).on('keypress', '.crumb', function(event) {
+      if (event.which == 13) {
+        activateCrumb(self, $(event.target));
+      }
+    });
+    renderPath(this, path);
 
-      if (newPath.join('/') != self.path.join('/')) {
-        var event = new CustomEvent('pathChange', {
-          'detail': newPath
-        });
-        self.dispatchEvent(event);
+    this.on('setPath', function(event, newPath) {
+      path = newPath;
+      renderPath(this, path);
+    });
+
+    function activateCrumb(self, $crumb) {
+      var idx = parseInt($crumb.attr('idx'));
+      var newPath = path.slice(0, idx + 1);
+
+      if (newPath.join('/') != path.join('/')) {
+        self.trigger('pathChange', [newPath]);
       }
     }
 
     function renderPath(self, path) {
       var renderedDotsSeparator = false;
 
-      while(self.container.firstChild) {
-        self.container.removeChild(self.container.firstChild);
-      }
+      $container.empty();
       path.forEach(function(pathPart, idx) {
 
         //Skip path entries in the middle
@@ -34,70 +46,41 @@
 
           //Render the dots separator once
           if (!renderedDotsSeparator) {
-            self.container.appendChild(createDotsSeparator(path, maxEntries));
-            self.container.appendChild(createCrumbSeparator());
+            createDotsSeparator(path, maxEntries).appendTo($container);
+            createCrumbSeparator().appendTo($container);
             renderedDotsSeparator = true;
           }
           return;
         }
 
-        self.container.appendChild(createCrumb(pathPart, idx));
+        createCrumb(pathPart, idx).appendTo($container);
         if (idx != path.length - 1) {
-          self.container.appendChild(createCrumbSeparator());
+          createCrumbSeparator().appendTo($container);
         }
       });
     }
 
     function createDotsSeparator(path, maxEntries) {
-      var crumbSeparator = document.createElement('span');
+      var $crumbSeparator = $('<span></span>');
       var tooltipParts = path.slice(maxEntries - 1);
 
       tooltipParts.pop();
 
       var tooltip = tooltipParts.join(' > ');
 
-      crumbSeparator.appendChild(document.createTextNode('...'));
-      crumbSeparator.setAttribute('class', 'crumb-separator');
-      crumbSeparator.setAttribute('title', tooltip);
-      return crumbSeparator;
+      return $crumbSeparator.attr('class', 'crumb-separator')
+        .attr('title', tooltip).text('...');
     }
 
     function createCrumb(pathPart, idx) {
-      var crumb = document.createElement('span');
-
-      crumb.setAttribute('class', 'crumb');
-      crumb.setAttribute('tabindex', '0');
-      crumb.setAttribute('idx', idx);
-      crumb.appendChild(document.createTextNode(pathPart));
-      return crumb;
+      return $('<span></span>').attr('class', 'crumb')
+        .attr('tabindex', '0').attr('idx', idx).text(pathPart);
     }
 
     function createCrumbSeparator() {
-      var crumbSeparator = document.createElement('span');
-
-      crumbSeparator.appendChild(document.createTextNode('>'));
-      crumbSeparator.setAttribute('class', 'crumb-separator');
-      return crumbSeparator;
+      return $('<span></span>').attr('class', 'crumb-separator').text('>');
     }
 
-    function created(self) {
-      self.container = $('<div></div>').attr('class', 'breadcrumbs');
-      self.container.appendTo(self);
-      self.container = self.container[0];
-      self.container.addEventListener('click', function(event) {
-        if (event.target.getAttribute('class') === 'crumb') {
-          activateCrumb(self, event.target);
-        }
-      }, false);
-      self.container.addEventListener('keypress', function(event) {
-        if ((event.target.getAttribute('class') === 'crumb') && (event.which == 13)) {
-          activateCrumb(self, event.target);
-        }
-      }, false);
-      renderPath(self, path);
-    };
-
-    created(this);
     return this;
   };
 }(jQuery));

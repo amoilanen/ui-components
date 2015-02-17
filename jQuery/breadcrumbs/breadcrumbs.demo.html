@@ -30,27 +30,21 @@
     }
 
     window.addEventListener('load', function() {
-      $('#breadcrumb-container').breadcrumbs({
+      var $breadcrumbs = $('#breadcrumb-container').breadcrumbs({
         'maxEntries': 5,
         'path': fullPath
       });
 
-      /*
-      var breadcrumbsElement = document.createElement('rc-breadcrumbs');
-      var content = document.querySelector('#content');
-      var resetButton = document.querySelector('#resetButton');
-
-      breadcrumbsElement.setAttribute('maxEntries', 5);
-      containerElement.appendChild(breadcrumbsElement);
-
-      setPath(breadcrumbsElement, content, fullPath);
-      breadcrumbsElement.addEventListener('pathChange', function(event) {
-        setPath(this, content, event.detail);
-      }, false);
-      resetButton.addEventListener('click', function(event) {
-        setPath(breadcrumbsElement, content, fullPath);
+      $breadcrumbs.on('pathChange', function(event, path) {
+        $breadcrumbs.trigger('setPath', [path]);
+        $content.text(path[path.length - 1]);
       });
-      */
+
+      var $content = $('#content');
+      $content.text(fullPath[fullPath.length - 1]);
+      $('#resetButton').on('click', function(event) {
+        $breadcrumbs.trigger('setPath', [fullPath]);
+      });
     });
   </script>
 </head>
