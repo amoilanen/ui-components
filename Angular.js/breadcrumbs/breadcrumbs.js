@@ -16,6 +16,7 @@ components.controller('breadcrumbsController', function ($scope) {
         if (!hasShortened) {
           var tooltipParts = path.slice(maxEntries - 1);
 
+          tooltipParts.pop();
           shortenedPath.push({
             value: '...',
             dots: true,
