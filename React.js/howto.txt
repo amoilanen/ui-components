@@ -1,0 +1,10 @@
+In order to view the demos install the project development dependencies, compile the JSX templates and LESS styles:
+
+npm install
+bower install
+npm install -g react-tools
+npm install -g less
+
+cd select
+clear && rm -rf compiled && jsx . compiled
+clear && lessc select.less compiled/select.css
